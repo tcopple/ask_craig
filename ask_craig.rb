@@ -7,12 +7,29 @@ require 'pp'
 
 class AskCraig < Sinatra::Base
   get '/rss' do
+    location = params[:location] || "newyork"
+    city = params[:city] || "city"
+    list = params[:list] || "aap"
+    query = params[:query] || nil
 
-    s = get_html_content("http://newyork.craigslist.org/search/aap/fct?query=train")
+    url = "http://#{location}.craigslist.org/"
+    if query.nil?
+      url << "#{city}/#{list}"
+    else
+      url << "search/#{list}/#{city}?query=#{query}"
+    end
+
+    s = get_html_content(url)
     @answers = Array.new
 
-    s.scan(/<p>(<a href="(.*?)"\>(.*?))<\/p>/).each do |m|
-      @answers << {:link => m[1], :title => m.shift.gsub(/<.*?>/, '')}
+    if list == "aap"
+      s.scan(/<p>(.*?)-.*?(<a href="(.*?)">(.*?)<\/a>).*?font.*?>(.*?)<\/font.*?<\/p>/).each do |m|
+        @answers << { :date => m[0].strip, :link => m[2], :title => m[3].gsub(/<.*?>/, ''), :cost => 0, :location => m[4].strip }
+      end
+    else
+      s.scan(/(.*?)-.*?(<a href="(.*?)">(.*?)<\/a>)\W*.*?font.*?>(.*?)<\/font.*?/).each do |m|
+        @answers << { :date => m[0].strip, :link => m[2], :title => m[3].gsub(/<.*?>/, ''), :cost => m[4], :location => m[5].try(:strip) }
+      end
     end
 
     content_type 'application/rss+xml'
@@ -20,16 +37,10 @@ class AskCraig < Sinatra::Base
   end
 
   def get_html_content(request_url)
-    url = URI.parse(request_url)
-    full_path = (url.query.empty?) ? url.path : "#{url.path}?#{url.query}"
-      the_request = Net::HTTP::Get.new("http://newyork.craigslist.org/fct/aap/")
+    str = "curl #{request_url}"
+    puts "Executing [#{str}]"
 
-    the_response = Net::HTTP.start(url.host, url.port) { |http|
-      http.request(the_request)
-    }
-
-    return the_response.body
+    ret = `#{str}`
+    return ret
   end
-
 end
-

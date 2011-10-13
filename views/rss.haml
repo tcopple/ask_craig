@@ -7,6 +7,9 @@
     <atom:link href="" rel="self" type="application/rss+xml" />
     - @answers.each do |itm|
       %item
-        %title= itm[:title]
+        -if itm[:cost].nil?
+          %title= "#{itm[:date]} - #{itm[:location]} - #{itm[:title]}"
+        -else
+          %title= "#{itm[:date]} $#{itm[:cost]} - #{itm[:location]} - #{itm[:title]}"
         %link= itm[:link]
         %description= ""
